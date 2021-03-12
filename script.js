@@ -1,145 +1,111 @@
-var map;
+let map;
 
+const initCoordinates = {lang: 54.3654997, long: 18.6438682}
+const center = new google.maps.LatLng(initCoordinates.lang, initCoordinates.long);
 
-var center = new google.maps.LatLng(54.3654997,18.6438682);
+let geocoder = new google.maps.Geocoder();
+let infowindow = new google.maps.InfoWindow();
 
-var geocoder = new google.maps.Geocoder();
-var infowindow = new google.maps.InfoWindow();
-
-var directionsService = new google.maps.DirectionsService();
-var directionsDisplay = new google.maps.DirectionsRenderer();
+let directionsService = new google.maps.DirectionsService();
+let directionsDisplay = new google.maps.DirectionsRenderer();
 
 function init() {
-
-    var mapOptions = {
+    const mapOptions = {
         zoom: 13,
         center: center,
         mapTypeId: google.maps.MapTypeId.ROADMAP
     }
-
-    map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
-
+    map = new google.maps.Map(document.getElementById("map"), mapOptions);
     directionsDisplay.setMap(map);
     directionsDisplay.setPanel(document.getElementById('directions_panel'));
 
-// Detect user location
-    if(navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
+    detectUserLocation();
+    addLocations();
+}
 
-            var userLocation = new google.maps.LatLng(position.coords.latitude,position.coords.longitude);
 
-            geocoder.geocode( { 'latLng': userLocation }, function(results, status) {
-                if (status == google.maps.GeocoderStatus.OK) {
-                    document.getElementById('start').value = results[0].formatted_address;
-                }
-            });
-
-        }, function() {
-            alert('Geolocation is supported, but it failed');
-        });
+function detectUserLocation() {
+    if(!navigator.geolocation) {
+        alert('Geolocation not supported');
     }
+    navigator.geolocation.getCurrentPosition((position) =>{
+        const userLocation = new google.maps.LatLng(position.coords.latitude,position.coords.longitude);
+        geocoder.geocode( { 'latLng': userLocation }, (results, status) => {
+            if (status === google.maps.GeocoderStatus.OK) {
+                document.getElementById('start').value = results[0].formatted_address;
+            }
+        });
 
-    makeRequest('get_locations.php', function(data) {
+    }, () => {
+        alert('Geolocation is supported, but it failed');
+    });
+}
 
-        var data = JSON.parse(data.responseText);
-        var selectBox = document.getElementById('destination');
 
-        for (var i = 0; i < data.length; i++) {
-            displayLocation(data[i]);
-            addOption(selectBox, data[i]['name'], data[i]['address']);
-        }
+function addLocations() {
+    getLocations('get_locations.php', (locations) => {
+        locations = JSON.parse(locations.responseText);
+        const selectBox = document.getElementById('destination');
+        locations.forEach((location) => {
+            displayLocation(location);
+            addOption(selectBox, location.name, location.address);
+        })
     });
 }
 
 function displayLocation(location) {
-
-    var content =   '<div class="infoWindow"><strong>'  + location.name + '</strong>'
+    const content = '<div class="infoWindow"><strong>'  + location.name + '</strong>'
         + '<br/><strong> Adres: </strong>'     + location.address
         + '<br/><strong> Kuchnia '             + location.cuisine + '</strong>'
         + '<br/><strong> Opis: </strong>'      + location.description
         + '<br/><strong> Godziny otwarcia: : </strong>'     + location.openingHours
         + '<br/><strong> Ceny: </strong>'     + location.price                            + '</div>';
+    const position = new google.maps.LatLng(parseFloat(location.lat), parseFloat(location.lon));
+    const marker = new google.maps.Marker({
+        map: map,
+        position: position,
+        title: location.name
+    });
 
-    if (parseInt(location.lat) == 0) {
-        geocoder.geocode( { 'address': location.address }, function(results, status) {
-            if (status == google.maps.GeocoderStatus.OK) {
+    google.maps.event.addListener(marker, 'click', () => {
+        infowindow.setContent(content);
+        infowindow.open(map,marker);
+    });
 
-                var marker = new google.maps.Marker({
-                    map: map,
-                    position: results[0].geometry.location,
-                    title: location.name
-                });
-
-                google.maps.event.addListener(marker, 'click', function() {
-                    infowindow.setContent(content);
-                    infowindow.open(map,marker);
-                });
-
-                // Save geocoding result to the Database
-                var url =   'set_coords.php?id=' + location.id
-                + '&amp;lat=' + results[0].geometry.location.lat()
-                + '&amp;lon=' + results[0].geometry.location.lng();
-
-                makeRequest(url, function(data) {
-                if (data.responseText == 'OK') {
-                // Success
-                }
-                });
-            }
-        });
-    } else {
-
-        var position = new google.maps.LatLng(parseFloat(location.lat), parseFloat(location.lon));
-        var marker = new google.maps.Marker({
-            map: map,
-            position: position,
-            title: location.name
-        });
-
-        google.maps.event.addListener(marker, 'click', function() {
-            infowindow.setContent(content);
-            infowindow.open(map,marker);
-        });
-    }
 }
 
 function addOption(selectBox, text, value) {
-    var option = document.createElement("OPTION");
+    const option = document.createElement("OPTION");
     option.text = text;
     option.value = value;
     selectBox.options.add(option);
 }
 
 function calculateRoute() {
-
-    var start = document.getElementById('start').value;
-    var destination = document.getElementById('destination').value;
-
-    if (start == '') {
+    let start = document.getElementById('start').value;
+    let destination = document.getElementById('destination').value;
+    if (!start) {
         start = center;
     }
-
-    var request = {
+    const payload = {
         origin: start,
         destination: destination,
         travelMode: google.maps.DirectionsTravelMode.DRIVING
     };
-    directionsService.route(request, function(response, status) {
-        if (status == google.maps.DirectionsStatus.OK) {
+    directionsService.route(payload, (response, status) => {
+        if (status === google.maps.DirectionsStatus.OK) {
             directionsDisplay.setDirections(response);
+        } else {
+            alert('Przykro mi, nie udalo sie wyznaczyc trasy')
         }
     });
 }
 
-function makeRequest(url, callback) {
-    var request;
-    if (window.XMLHttpRequest) {
-        request = new XMLHttpRequest(); // IE7+, Firefox, Chrome, Opera, Safari
-    } else {
-        request = new ActiveXObject("Microsoft.XMLHTTP"); // IE6, IE5
-    }
-    request.onreadystatechange = function() {
-        if (request.readyState == 4 && request.status == 200) {
+function getLocations(url, callback) {
+    const request = new XMLHttpRequest();
+    request.onreadystatechange = () => {
+        const doneRequestState = 4
+        if (request.readyState === doneRequestState && request.status === 200) {
             callback(request);
         }
     }
