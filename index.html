@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Google Maps Example</title>
+    <style type="text/css">
+        body { font: normal 14px Verdana; }
+        h1 { font-size: 24px; }
+        h2 { font-size: 18px; }
+        #sidebar { float: right; width: 30%; }
+        #main { padding-right: 15px; }
+        .infoWindow { width: 220px; }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBA91ID7An3hCbwiDvzJeKLlYUTFCGCbP4"></script>
+    <script src="script.js"></script>
+    </script>
+</head>
+<body onload="init();">
+
+<h1>Places to check out in Zagreb</h1>
+
+<form id="services">
+    Location: <input type="text" id="start" />
+    Destination: <select id="destination" onchange="calculateRoute();"></select>
+    <input type="button" value="Display Directions" onclick="calculateRoute();" />
+</form>
+
+<section id="sidebar">
+    <div id="directions_panel"></div>
+</section>
+
+<section id="main">
+    <div id="map_canvas" style="width: 70%; height: 500px;"></div>
+</section>
+
+</body>
+</html>
