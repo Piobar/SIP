@@ -20,6 +20,7 @@ function init() {
     directionsDisplay.setPanel(document.getElementById('directions_panel'));
 
     detectUserLocation();
+    createLocation();
     addLocations();
 }
 
@@ -111,4 +112,66 @@ function getLocations(url, callback) {
     }
     request.open("GET", url, true);
     request.send();
+}
+
+function saveLocation(value) {
+    console.log(value)
+}
+
+function createLocation() {
+    let marker = new google.maps.Marker();
+    let infoWindow = new google.maps.InfoWindow();
+    map.addListener('click', (mapsMouseEvent) => {
+        infoWindow.close();
+        marker.setMap(null)
+
+        infoWindow = new google.maps.InfoWindow({position: mapsMouseEvent.latLng});
+
+        const content = '<div class="infoWindow"><strong>Nowa lokalizacja</strong>'
+            + `<br/> <strong> Szerokość: </strong>${mapsMouseEvent.latLng.lat()}`
+            + `<br/><strong> Długość: </strong>${mapsMouseEvent.latLng.lng()}`
+            + `<br/><strong> nazwa: </strong> <input type="text" id="name" name="name">`
+            + `<br/><strong> adres: </strong> <input type="text" id="address" name="address">`
+            + `<br/><strong> opis: </strong> <input type="text" id="description" name="description">`
+            + `<br/><strong> cena: </strong> <input type="text" id="price" name="price">`
+            + `<br/><strong> cuisine: </strong> <input type="text" id="cuisine" name="name">`
+            + `<br/><strong> godziny otwarcia: </strong> <input type="text" id="openingHours" name="name">`
+            + `<br/><button id="cancelButton" >Wyjdź</button> <button id="confirmationButton" >Zapisz</button>`
+            + '</div>'
+
+        infoWindow.setContent(content);
+        marker = new google.maps.Marker({
+            map,
+            position: mapsMouseEvent.latLng,
+        });
+
+        infoWindow.open(map, marker)
+        setTimeout(() => {
+            const confirmationButton = document.getElementById('confirmationButton')
+            const cancelButton = document.getElementById('cancelButton')
+            confirmationButton.addEventListener('click',  (value) => {
+                const name = document.getElementById('name').value
+                const address = document.getElementById('address').value
+                const description = document.getElementById('description').value
+                const price = document.getElementById('price').value
+                const cuisine = document.getElementById('cuisine').value
+                const openingHours = document.getElementById('openingHours').value
+
+                const payload = {
+                    name,
+                    address,
+                    description,
+                    price,
+                    cuisine,
+                    openingHours,
+                    lat: mapsMouseEvent.latLng.lat(),
+                    lon: mapsMouseEvent.latLng.lng(),
+                }
+                saveLocation(payload)
+            });
+            cancelButton.addEventListener('click',  (value) => {
+                infoWindow.close();
+            });
+        }, 0)
+    });
 }
